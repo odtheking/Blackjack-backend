@@ -1,14 +1,47 @@
-export type Suit = 'Hearts' | 'Diamonds' | 'Clubs' | 'Spades'
-export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K'
+export enum Suit {
+    Hearts = 'Hearts',
+    Diamonds = 'Diamonds',
+    Clubs = 'Clubs',
+    Spades = 'Spades'
+}
+
+export enum Rank {
+    Two = '2',
+    Three = '3',
+    Four = '4',
+    Five = '5',
+    Six = '6',
+    Seven = '7',
+    Eight = '8',
+    Nine = '9',
+    Ten = '10',
+    Jack = 'J',
+    Queen = 'Q',
+    King = 'K',
+    Ace = 'A'
+}
+
+export enum Status {
+    InProgress = 'In Progress',
+    Win = 'Win',
+    Lose = 'Lose',
+    Push = 'Push'
+}
 
 export interface Card {
     suit: Suit
     rank: Rank
 }
 
+export interface Hand {
+    cards: Card[]
+    score: number,
+    altScore?: number
+}
+
 export interface GameState {
     deck: Card[]
-    playerHand: Card[]
-    dealerHand: Card[]
-    gameOver: boolean
+    playerHand: Hand
+    dealerHand: Hand
+    gameStatus: Status
 }

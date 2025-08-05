@@ -1,8 +1,8 @@
-import { Card, Rank, Suit, GameState } from '../types/types'
+import {Card, Rank, Suit, GameState, Status} from '../types/types'
 
 export function generateDeck(): Card[] {
-    const suits: Suit[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-    const ranks: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    const suits: Suit[] = Object.values(Suit)
+    const ranks: Rank[] = Object.values(Rank)
     const deck: Card[] = []
 
     for (const suit of suits)
@@ -16,13 +16,13 @@ export const shuffle = (deck: Card[]): Card[] => deck.sort(() => Math.random() -
 
 export function dealInitialCards(deck: Card[]): {
     deck: Card[]
-    playerHand: Card[]
-    dealerHand: Card[]
+    playerCards: Card[]
+    dealerCards: Card[]
 } {
     const playerHand = [deck[0], deck[2]]
     const dealerHand = [deck[1], deck[3]]
 
-    return { deck: deck.slice(4), playerHand, dealerHand }
+    return { deck: deck.slice(4), playerCards: playerHand, dealerCards: dealerHand }
 }
 
 export function drawCard(deck: Card[]): { card: Card; deck: Card[] } {
@@ -30,26 +30,63 @@ export function drawCard(deck: Card[]): { card: Card; deck: Card[] } {
     return { card, deck: rest }
 }
 
-export function calculateScore(hand: Card[]): number {
+export function calculateScore(hand: Card[]): { score: number, altScore?: number } {
     let score = 0
     let aces = 0
 
-    for (const card of hand) {
-        if (card.rank === 'A') {
+    for (const { rank } of hand) {
+        if (rank === Rank.Ace) {
             aces++
             score += 11
-        } else if (['K', 'Q', 'J'].includes(card.rank)) score += 10
-        else score += parseInt(card.rank)
+        } else if ([Rank.Jack, Rank.Queen, Rank.King].includes(rank)) score += 10
+        else score += parseInt(rank)
     }
 
-    while (score > 21 && aces > 0) {
-        score -= 10
-        aces--
-    }
+    let altScore = score
+    while (altScore > 21 && aces-- > 0) altScore -= 10
 
-    return score
+    return altScore < score && altScore <= 21 ? { score: altScore, altScore: score } : { score: altScore }
 }
 
-export function isBusted(hand: Card[]): boolean {
-    return calculateScore(hand) > 21
+export const playerHit = (gameState: GameState): GameState => {
+    const { card, deck } = drawCard(gameState.deck)
+    const playerHand = gameState.playerHand
+    playerHand.cards.push(card)
+
+    const { score, altScore } = calculateScore(playerHand.cards)
+    playerHand.score = score
+    playerHand.altScore = altScore ?? score
+
+    if (altScore ?? score > 21) gameState.gameStatus = Status.Lose
+
+    gameState.deck = deck
+
+    return gameState
+}
+
+export const playerStands = (gameState: GameState): GameState => {
+    playDealer(gameState)
+
+    if      (gameState.dealerHand.score > 21)                         gameState.gameStatus = Status.Win
+    else if (gameState.dealerHand.score > gameState.playerHand.score) gameState.gameStatus = Status.Lose
+    else if (gameState.dealerHand.score < gameState.playerHand.score) gameState.gameStatus = Status.Win
+    else                                                              gameState.gameStatus = Status.Push
+
+    return gameState
+}
+
+const playDealer = (gameState: GameState): GameState => {
+    const dealerHand = gameState.dealerHand
+    while (dealerHand.score < 17) {
+        const { card, deck } = drawCard(gameState.deck)
+        dealerHand.cards.push(card)
+
+        const { score, altScore } = calculateScore(dealerHand.cards)
+        dealerHand.score = score
+        dealerHand.altScore = altScore ?? score
+
+        gameState.deck = deck
+    }
+
+    return gameState
 }
