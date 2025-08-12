@@ -1,4 +1,4 @@
-import {Card, Rank, Suit, GameState, Status} from '../types/types'
+import {Card, GameState, Rank, Status, Suit} from '../types/types'
 
 export function generateDeck(): Card[] {
     const suits: Suit[] = Object.values(Suit)
@@ -42,51 +42,68 @@ export function calculateScore(hand: Card[]): { score: number, altScore?: number
         else score += parseInt(rank)
     }
 
-    let altScore = score
-    while (altScore > 21 && aces-- > 0) altScore -= 10
+    if (aces > 0) {
+        let lowScore = score - (10 * aces)
 
-    return altScore < score && altScore <= 21 ? { score: altScore, altScore: score } : { score: altScore }
+        if (score <= 21) return { score, altScore: lowScore }
+
+        let bestScore = lowScore;
+        for (let i = aces - 1; i >= 0; i--) {
+            const testScore = lowScore + (10 * i)
+            if (testScore <= 21) {
+                bestScore = testScore
+                break
+            }
+        }
+
+        return { score: bestScore }
+    }
+
+    return { score }
 }
 
-export const playerHit = (gameState: GameState): GameState => {
-    const { card, deck } = drawCard(gameState.deck)
-    const playerHand = gameState.playerHand
-    playerHand.cards.push(card)
+export function playerHit(gameState: GameState): GameState {
+    const newState = { ...gameState };
 
-    const { score, altScore } = calculateScore(playerHand.cards)
-    playerHand.score = score
-    playerHand.altScore = altScore ?? score
+    const { card, deck } = drawCard(newState.deck)
+    const playerCards = [...newState.playerHand.cards, card]
+    const { score, altScore } = calculateScore(playerCards)
 
-    if (altScore ?? score > 21) gameState.gameStatus = Status.Lose
+    newState.playerHand = {cards: playerCards, score, altScore}
+    newState.deck = deck
 
-    gameState.deck = deck
+    if (score > 21) newState.gameStatus = Status.Lose
+    else if (score === 21) return playerStands(newState)
 
-    return gameState
+    return newState
 }
 
 export const playerStands = (gameState: GameState): GameState => {
-    playDealer(gameState)
+    let newState = { ...gameState }
+    newState = playDealer(newState)
 
-    if      (gameState.dealerHand.score > 21)                         gameState.gameStatus = Status.Win
-    else if (gameState.dealerHand.score > gameState.playerHand.score) gameState.gameStatus = Status.Lose
-    else if (gameState.dealerHand.score < gameState.playerHand.score) gameState.gameStatus = Status.Win
-    else                                                              gameState.gameStatus = Status.Push
+    if      (newState.dealerHand.score > 21)                         newState.gameStatus = Status.Win
+    else if (newState.dealerHand.score > newState.playerHand.score)  newState.gameStatus = Status.Lose
+    else if (newState.dealerHand.score < newState.playerHand.score)  newState.gameStatus = Status.Win
+    else                                                             newState.gameStatus = Status.Push
 
-    return gameState
+    return newState
 }
 
-const playDealer = (gameState: GameState): GameState => {
-    const dealerHand = gameState.dealerHand
+function playDealer(gameState: GameState): GameState {
+    const newState = { ...gameState }
+    let dealerHand = { ...newState.dealerHand }
+
     while (dealerHand.score < 17) {
-        const { card, deck } = drawCard(gameState.deck)
-        dealerHand.cards.push(card)
+        const { card, deck } = drawCard(newState.deck)
+        const dealerCards = [...dealerHand.cards, card]
+        const { score, altScore } = calculateScore(dealerCards)
 
-        const { score, altScore } = calculateScore(dealerHand.cards)
-        dealerHand.score = score
-        dealerHand.altScore = altScore ?? score
+        dealerHand = {cards: dealerCards, score, altScore}
 
-        gameState.deck = deck
+        newState.dealerHand = dealerHand
+        newState.deck = deck
     }
 
-    return gameState
+    return newState
 }
