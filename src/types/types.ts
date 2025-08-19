@@ -24,6 +24,7 @@ export enum Rank {
 export enum Status {
     InProgress = 'In Progress',
     Win = 'Win',
+    Blackjack = 'Blackjack',
     Lose = 'Lose',
     Push = 'Push'
 }

@@ -6,7 +6,7 @@ const app = express()
 
 const PORT = 5555
 app.listen(PORT, () => {
-    console.log(`Backend running on http://localhost:${PORT}`)
+    console.log(`http://localhost:${PORT}`)
 })
 
 app.use(cors())

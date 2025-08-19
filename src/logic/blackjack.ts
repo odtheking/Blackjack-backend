@@ -7,27 +7,20 @@ export function generateDeck(): Card[] {
 
     for (const suit of suits)
         for (const rank of ranks)
-            deck.push({ suit, rank })
+            deck.push({ suit: suit, rank: rank })
 
     return deck
 }
 
 export const shuffle = (deck: Card[]): Card[] => deck.sort(() => Math.random() - 0.5)
 
-export function dealInitialCards(deck: Card[]): {
-    deck: Card[]
-    playerCards: Card[]
-    dealerCards: Card[]
-} {
-    const playerHand = [deck[0], deck[2]]
-    const dealerHand = [deck[1], deck[3]]
-
-    return { deck: deck.slice(4), playerCards: playerHand, dealerCards: dealerHand }
+export function dealInitialCards(deck: Card[]) {
+    return { deck: deck.slice(4), playerCards: [deck[0], deck[2]], dealerCards: [deck[1], deck[3]] }
 }
 
-export function drawCard(deck: Card[]): { card: Card; deck: Card[] } {
+export function drawCard(deck: Card[]): { card: Card, deck: Card[] } {
     const [card, ...rest] = deck
-    return { card, deck: rest }
+    return { card: card, deck: rest }
 }
 
 export function calculateScore(hand: Card[]): { score: number, altScore?: number } {
@@ -36,40 +29,31 @@ export function calculateScore(hand: Card[]): { score: number, altScore?: number
 
     for (const { rank } of hand) {
         if (rank === Rank.Ace) {
-            aces++
             score += 11
+            aces++
         } else if ([Rank.Jack, Rank.Queen, Rank.King].includes(rank)) score += 10
         else score += parseInt(rank)
     }
 
-    if (aces > 0) {
-        let lowScore = score - (10 * aces)
-
-        if (score <= 21) return { score, altScore: lowScore }
-
-        let bestScore = lowScore;
-        for (let i = aces - 1; i >= 0; i--) {
-            const testScore = lowScore + (10 * i)
-            if (testScore <= 21) {
-                bestScore = testScore
-                break
-            }
-        }
-
-        return { score: bestScore }
+    while (score > 21 && aces > 0) {
+        score -= 10
+        aces--
     }
 
-    return { score }
+    const altScore = (aces > 0 ? score - 10 : undefined)
+
+    return { score, altScore }
 }
 
+
 export function playerHit(gameState: GameState): GameState {
-    const newState = { ...gameState };
+    const newState = { ...gameState }
 
     const { card, deck } = drawCard(newState.deck)
     const playerCards = [...newState.playerHand.cards, card]
     const { score, altScore } = calculateScore(playerCards)
 
-    newState.playerHand = {cards: playerCards, score, altScore}
+    newState.playerHand = { cards: playerCards, score, altScore}
     newState.deck = deck
 
     if (score > 21) newState.gameStatus = Status.Lose
@@ -106,4 +90,12 @@ function playDealer(gameState: GameState): GameState {
     }
 
     return newState
+}
+
+export function playerDouble(gameState: GameState): GameState {
+    const newState = playerHit(gameState)
+
+    if (newState.gameStatus === Status.Lose) return newState
+
+    return playerStands(newState)
 }
